@@ -1,15 +1,5 @@
 # dotfiles
 
-## 📚 Sources
-
-There's a lot a good dotfiles resources out there.
-And in order to build my own dotfiles repo, I took some ideas from:
-
-- [awesome-dotfiles](https://github.com/webpro/awesome-dotfiles)
-- [jesperorb](https://github.com/jesperorb/dotfiles)
-- [mathiasbynens](https://github.com/mathiasbynens/dotfiles)
-- [webpro](https://github.com/webpro/dotfiles)
-
 ## 🔧 Configuration Files
 
 - `.aliases` - all aliases
@@ -41,3 +31,10 @@ git config --global user.email "$GIT_AUTHOR_EMAIL"
 ```bash
 source install.sh
 ```
+
+## 📚 Resources worth mentioning
+
+- [awesome-dotfiles](https://github.com/webpro/awesome-dotfiles)
+- [jesperorb](https://github.com/jesperorb/dotfiles)
+- [mathiasbynens](https://github.com/mathiasbynens/dotfiles)
+- [webpro](https://github.com/webpro/dotfiles)
