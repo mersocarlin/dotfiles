@@ -50,10 +50,3 @@ brew cask install spotify
 
 # Visual Studio Code
 brew cask install visual-studio-code
-
-# Symlink dotfiles
-DOTFILES_DIR=$(pwd)
-for file in $DOTFILES_DIR/.{zshrc,exports,aliases,functions,extras}; do
-	[ -r "$file" ] && [ -f "$file" ] && ln -s $file $HOME;
-done;
-unset file;
