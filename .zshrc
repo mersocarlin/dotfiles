@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ZSH_THEME="bira"
+ZSH_THEME="avit"
 
 plugins=(
   docker
