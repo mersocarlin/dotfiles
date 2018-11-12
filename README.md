@@ -32,6 +32,14 @@ git config --global user.email "$GIT_AUTHOR_EMAIL"
 source install.sh
 ```
 
+## Sensible macOS defaults
+
+When setting up a new Mac, you may want to set some sensible macOS defaults:
+
+```bash
+./.macos
+```
+
 ## 📚 Resources worth mentioning
 
 - [awesome-dotfiles](https://github.com/webpro/awesome-dotfiles)

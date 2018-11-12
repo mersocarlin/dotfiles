@@ -374,9 +374,9 @@
 	<key>NSWindow Frame SessionsPreferences</key>
 	<string>952 1586 606 469 0 1050 1920 1058 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>458 1596 796 486 0 1050 1920 1080 </string>
+	<string>518 1345 796 486 0 1050 1920 1058 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>1252 1050 668 1080 0 1050 1920 1080 </string>
+	<string>1252 1633 570 475 0 1050 1920 1080 </string>
 	<key>NeverWarnAboutShortLivedSessions_2400C5B0-EA2B-4139-85DB-E4D01F50B709</key>
 	<true/>
 	<key>NeverWarnAboutShortLivedSessions_2400C5B0-EA2B-4139-85DB-E4D01F50B709_selection</key>
