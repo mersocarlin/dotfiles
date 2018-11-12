@@ -1,8 +1,12 @@
 #!/bin/bash
 
-ZSH_THEME="bira"
+ZSH_THEME="avit"
 
-plugins=(docker git zsh-autosuggestions)
+plugins=(
+  docker
+  git zsh-autosuggestions
+  zsh-syntax-highlighting
+)
 
 for file in $HOME/.{exports,aliases,functions,extras}; do
   [ -r "$file" ] && [ -f "$file" ] && source "$file";
