@@ -4,7 +4,8 @@ ZSH_THEME="avit"
 
 plugins=(
   docker
-  git zsh-autosuggestions
+  git 
+  zsh-autosuggestions
   zsh-syntax-highlighting
 )
 
