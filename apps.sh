@@ -33,9 +33,6 @@ brew cask install google-chrome
 # iTerm2
 brew cask install iTerm2
 
-# Install the The Hulk theme for iTerm2
-open "./apps-config/The\ Hulk.itermcolors"
-
 # Don’t display the annoying prompt when quitting iTerm
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
@@ -46,7 +43,7 @@ brew cask install postman
 brew cask install spectacle 
 
 # Set up keyboard shortcuts
-cp -r ./apps-config/spectacle.json ~/Library/Application\ Support/Spectacle/Shortcuts.json 2> /dev/null
+cp -r ./apps/spectacle/Shortcuts.json ~/Library/Application\ Support/Spectacle/Shortcuts.json 2> /dev/null
 
 # Spotify
 brew cask install spotify
