@@ -28,9 +28,9 @@ alias hide="defaults write com.apple.finder AppleShowAllFiles -bool false && kil
 alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
 alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
 
-# One of @janmoesen’s ProTip™s
-for method in GET get HEAD head POST post PUT put DELETE delete TRACE trace OPTIONS options; do
-	alias "${method}"="lwp-request -m '${method}'"
+# http requests (https://httpie.org/)
+for method in GET get POST post PUT put DELETE delete; do
+  alias "${method}"="http '${method}'"
 done
 
 # Lock the screen (when going AFK)
