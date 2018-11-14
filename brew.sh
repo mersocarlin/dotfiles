@@ -59,6 +59,7 @@ install_brew_package woff2
 install_brew_package ack
 install_brew_package git
 install_brew_package git-lfs
+install_brew_package httpie
 install_brew_package imagemagick --with-webp
 install_brew_package jq
 install_brew_package lua
