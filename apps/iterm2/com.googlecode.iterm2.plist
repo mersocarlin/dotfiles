@@ -374,9 +374,9 @@
 	<key>NSWindow Frame SessionsPreferences</key>
 	<string>952 1586 606 469 0 1050 1920 1058 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>518 1345 796 486 0 1050 1920 1058 </string>
+	<string>58 1570 928 394 0 1050 1920 1057 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>1252 1633 570 475 0 1050 1920 1080 </string>
+	<string>0 1050 1920 1057 0 1050 1920 1057 </string>
 	<key>NeverWarnAboutShortLivedSessions_2400C5B0-EA2B-4139-85DB-E4D01F50B709</key>
 	<true/>
 	<key>NeverWarnAboutShortLivedSessions_2400C5B0-EA2B-4139-85DB-E4D01F50B709_selection</key>
@@ -651,6 +651,8 @@
 			<integer>80</integer>
 			<key>Command</key>
 			<string></string>
+			<key>Cursor Boost</key>
+			<real>0.0</real>
 			<key>Cursor Color</key>
 			<dict>
 				<key>Alpha Component</key>
@@ -1051,26 +1053,26 @@
 				<key>Alpha Component</key>
 				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.034443213523071808</real>
+				<real>1</real>
 				<key>Color Space</key>
-				<string>Calibrated</string>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.38762626322832971</real>
+				<real>1</real>
 				<key>Red Component</key>
-				<real>0.044051044894719435</real>
+				<real>1</real>
 			</dict>
 			<key>Selection Color</key>
 			<dict>
 				<key>Alpha Component</key>
 				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.29906663298606873</real>
+				<real>0.13333333333333333</real>
 				<key>Color Space</key>
-				<string>Calibrated</string>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.31218433380126953</real>
+				<real>0.74509803921568629</real>
 				<key>Red Component</key>
-				<real>0.30208501219749451</real>
+				<real>0.0</real>
 			</dict>
 			<key>Send Code When Idle</key>
 			<false/>
@@ -1106,6 +1108,8 @@
 			<string>/Users/hcarlin</string>
 		</dict>
 	</array>
+	<key>NoSyncHaveRequestedFullDiskAccess</key>
+	<true/>
 	<key>NoSyncHaveWarnedAboutPasteConfirmationChange</key>
 	<true/>
 	<key>NoSyncInstallationId</key>
@@ -1159,6 +1163,10 @@
 	<string>/Users/hcarlin/Development/mersocarlin/dotfiles/apps/iterm2</string>
 	<key>PromptOnQuit</key>
 	<false/>
+	<key>QuickPasteBytesPerCall</key>
+	<integer>1024</integer>
+	<key>QuickPasteDelayBetweenCalls</key>
+	<real>0.0099999997764825821</real>
 	<key>QuitWhenAllWindowsClosed</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
@@ -1170,13 +1178,19 @@
 	<key>SUHasLaunchedBefore</key>
 	<true/>
 	<key>SULastCheckTime</key>
-	<date>2018-11-12T11:49:56Z</date>
+	<date>2018-11-19T12:00:56Z</date>
 	<key>SUSendProfileInfo</key>
 	<false/>
 	<key>ShowFullScreenTabBar</key>
 	<true/>
 	<key>ShowNewOutputIndicator</key>
 	<true/>
+	<key>SlowPasteBytesPerCall</key>
+	<integer>16</integer>
+	<key>SlowPasteDelayBetweenCalls</key>
+	<real>0.125</real>
+	<key>SplitPaneDimmingAmount</key>
+	<real>0.38987630208333335</real>
 	<key>StretchTabsToFillBar</key>
 	<false/>
 	<key>TabStyleWithAutomaticOption</key>
