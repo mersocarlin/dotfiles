@@ -6,6 +6,7 @@
 - `.exports` - all environment variables
 - `.extras` - custom settings you don’t want to commit (_optional_)
 - `.functions` - bash functions, called by aliases
+- `.macos` - macos defaults
 - `.zshrc` - zsh config
 
 ### 💅 Custom settings
@@ -34,7 +35,9 @@ source install.sh
 
 ## Sensible macOS defaults
 
-When setting up a new Mac, you may want to set some sensible macOS defaults:
+When setting up a new Mac, you may want to set some sensible macOS defaults.
+
+**Note**: Use `Terminal` app to execute the command below:
 
 ```bash
 ./.macos
