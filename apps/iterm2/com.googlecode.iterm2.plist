@@ -327,6 +327,8 @@
 	<false/>
 	<key>HotkeyMigratedFromSingleToMulti</key>
 	<true/>
+	<key>LeftOption</key>
+	<integer>2</integer>
 	<key>LoadPrefsFromCustomFolder</key>
 	<true/>
 	<key>NSNavLastRootDirectory</key>
@@ -374,7 +376,7 @@
 	<key>NSWindow Frame SessionsPreferences</key>
 	<string>952 1586 606 469 0 1050 1920 1058 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>58 1570 928 394 0 1050 1920 1057 </string>
+	<string>713 1385 796 486 0 1050 1920 1057 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
 	<string>0 1050 1920 1057 0 1050 1920 1057 </string>
 	<key>NeverWarnAboutShortLivedSessions_2400C5B0-EA2B-4139-85DB-E4D01F50B709</key>
@@ -868,9 +870,9 @@
 				<key>0xf702-0x280000</key>
 				<dict>
 					<key>Action</key>
-					<integer>11</integer>
+					<integer>10</integer>
 					<key>Text</key>
-					<string>0x1b 0x1b 0x5b 0x44</string>
+					<string>b</string>
 				</dict>
 				<key>0xf703-0x220000</key>
 				<dict>
@@ -896,9 +898,9 @@
 				<key>0xf703-0x280000</key>
 				<dict>
 					<key>Action</key>
-					<integer>11</integer>
+					<integer>10</integer>
 					<key>Text</key>
-					<string>0x1b 0x1b 0x5b 0x43</string>
+					<string>f</string>
 				</dict>
 				<key>0xf704-0x20000</key>
 				<dict>
@@ -1037,7 +1039,7 @@
 			<key>Normal Font</key>
 			<string>Monaco 12</string>
 			<key>Option Key Sends</key>
-			<integer>0</integer>
+			<integer>2</integer>
 			<key>Prompt Before Closing 2</key>
 			<false/>
 			<key>Right Option Key Sends</key>
@@ -1178,7 +1180,7 @@
 	<key>SUHasLaunchedBefore</key>
 	<true/>
 	<key>SULastCheckTime</key>
-	<date>2018-11-19T12:00:56Z</date>
+	<date>2018-11-20T13:30:07Z</date>
 	<key>SUSendProfileInfo</key>
 	<false/>
 	<key>ShowFullScreenTabBar</key>
