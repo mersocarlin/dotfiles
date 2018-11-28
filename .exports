@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/local/sbin:$(brew --prefix coreutils)/libexec/gnubin:$PATH"
 
 export EDITOR="vim"
 
