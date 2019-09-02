@@ -16,3 +16,9 @@ done;
 unset file;
 
 source $ZSH/oh-my-zsh.sh
+
+# Enforce node stable version on startup
+nvm use stable
+
+# Load zsh shell integration
+source "${HOME}/.iterm2_shell_integration.zsh"
