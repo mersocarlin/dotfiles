@@ -21,4 +21,7 @@ source $ZSH/oh-my-zsh.sh
 nvm use stable
 
 # Load zsh shell integration
-source "${HOME}/.iterm2_shell_integration.zsh"
+SHELL_INTEGRATION=${HOME}/.iterm2_shell_integration.zsh
+if test -f "$SHELL_INTEGRATION"; then
+  source $SHELL_INTEGRATION
+fi
