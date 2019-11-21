@@ -57,6 +57,7 @@ install_brew_package woff2
 
 # Install other useful binaries.
 install_brew_package ack
+install_brew_package fx
 install_brew_package git
 install_brew_package git-lfs
 install_brew_package httpie
