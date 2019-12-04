@@ -54,6 +54,9 @@ alias wipedockervolumes='docker volume rm $(docker volume ls -qf dangling=true)'
 alias wipedockercontainers='docker stop $(docker ps -aq) && docker rm $(docker ps -aq)'
 alias wipedocker='wipe_docker'
 
+# Date aliases
+alias today="date +%Y-%m-%d"
+
 # yarn watch tests
 alias ytw="yarn test --watch" 
 
