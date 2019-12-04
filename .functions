@@ -27,3 +27,13 @@ function wipe_docker() {
   echo "-> Removing volumes"
   wipedockervolumes
 }
+
+# Calculate date from today
+# Sample usage:
+# from_today 7d (7 days from now)
+# from_today 7w (7 weeks from now)
+# from_today 7m (7 months from now)
+# from_today 7y (7 years from now)
+function from_today() {
+	date -j -v+$1 +%Y-%m-%d
+}
