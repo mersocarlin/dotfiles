@@ -49,4 +49,4 @@ cp -r ./apps/spectacle/Shortcuts.json ~/Library/Application\ Support/Spectacle/S
 brew cask install spotify
 
 # Visual Studio Code
-brew cask install visual-studio-code
+brew cask install visual-studio-code-insiders
