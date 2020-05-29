@@ -88,6 +88,9 @@ if [[ $OSTYPE == darwin* ]]; then
 
   # Apps
   alias browse="open -a /Applications/Google\ Chrome.app"
-  alias mersocarlin="browse https://mersocarlin.com"
+  
   alias atomicmoney="browse http://atomicmoney.app"
+  alias github="browse https://github.com/mersocarlin"
+  alias mersocarlin="browse https://mersocarlin.com"
+  
 fi
