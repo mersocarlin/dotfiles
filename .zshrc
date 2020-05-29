@@ -25,3 +25,7 @@ SHELL_INTEGRATION=${HOME}/.iterm2_shell_integration.zsh
 if test -f "$SHELL_INTEGRATION"; then
   source $SHELL_INTEGRATION
 fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
