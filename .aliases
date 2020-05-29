@@ -69,3 +69,28 @@ alias openexports="$EDITOR $HOME/.exports"
 alias openextras="$EDITOR $HOME/.extras"
 alias openfunctions="$EDITOR $HOME/.functions"
 alias openzshrc="$EDITOR $HOME/.zshrc"
+
+### Sufix aliases 
+# alias -s extension=name-of-the-tool-to-open-the-fiel
+
+# Markdown files
+alias -s md=code
+
+# JSON files
+alias -s json=code
+
+# bulk association
+alias -s {cs,ts,html,txt,csv,yml,yaml}=code
+
+### macOS aliasses
+if [[ $OSTYPE == darwin* ]]; then
+  alias flush='dscacheutil -flushcache'
+
+  # Apps
+  alias browse="open -a /Applications/Google\ Chrome.app"
+  
+  alias atomicmoney="browse http://atomicmoney.app"
+  alias github="browse https://github.com/mersocarlin"
+  alias mersocarlin="browse https://mersocarlin.com"
+  
+fi
