@@ -77,5 +77,8 @@ install_brew_package yarn --without-node
 install_brew_package zopfli
 install_brew_package zsh
 
+## Compress muted videos by ~90%
+install_brew_package ffmpeg
+
 # Remove outdated versions from the cellar.
 brew cleanup
