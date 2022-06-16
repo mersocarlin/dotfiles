@@ -40,6 +40,7 @@ When setting up a new Mac, you may want to set some sensible macOS defaults.
 **Note**: Use `Terminal` app to execute the command below:
 
 ```bash
+chmod +x .macos
 ./.macos
 ```
 
