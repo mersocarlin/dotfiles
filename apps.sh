@@ -15,26 +15,11 @@ git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH_CUSTOM/p
 # Install zsh-nvm plugin
 git clone https://github.com/lukechilds/zsh-nvm $ZSH_CUSTOM/plugins/zsh-nvm
 
-brew tap caskroom/cask
-brew tap caskroom/versions
-
-# Docker
-brew cask install docker
-
 # Don’t display the annoying prompt when quitting iTerm
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
-# Postman
-brew cask install postman
-
 # Spectacle
-brew cask install spectacle
+brew install --cask spectacle
 
 # Set up keyboard shortcuts
 cp -r ./apps/spectacle/Shortcuts.json ~/Library/Application\ Support/Spectacle/Shortcuts.json 2> /dev/null
-
-# Spotify
-brew cask install spotify
-
-# Visual Studio Code
-brew cask install visual-studio-code-insiders
