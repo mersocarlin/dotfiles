@@ -37,13 +37,7 @@ brew cask install iTerm2
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
 # Postman
-brew cask install postman 
-
-# Spectacle
-brew cask install spectacle 
-
-# Set up keyboard shortcuts
-cp -r ./apps/spectacle/Shortcuts.json ~/Library/Application\ Support/Spectacle/Shortcuts.json 2> /dev/null
+brew cask install postman
 
 # Spotify
 brew cask install spotify
