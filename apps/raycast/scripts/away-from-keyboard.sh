@@ -15,8 +15,8 @@
 # turn off office lights
 curl -X HA_URL
 
-# wait 2 seconds before continue
-sleep 2
+# wait 500ms before continue
+sleep 0.5
 
 # put laptop in sleep mode
 pmset sleepnow
