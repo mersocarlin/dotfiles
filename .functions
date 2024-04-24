@@ -47,4 +47,5 @@ function from_today() {
 ##
 function compress_video() {
 	ffmpeg -i $1 -vcodec libx264 -crf 28 $2
+	rm $1
 }
