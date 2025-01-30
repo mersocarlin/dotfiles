@@ -9,7 +9,7 @@
 - `.macos` - macos defaults
 - `.zshrc` - zsh config
 
-### 💅 Custom settings
+### 🎛️ Custom settings
 
 If `.extras` exists, it will be sourced along with the other files.
 You can use this to add a few custom commands you don’t want to commit to a public repository.
@@ -27,21 +27,10 @@ GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 git config --global user.email "$GIT_AUTHOR_EMAIL"
 ```
 
-## 🔥 Install
+## 🚀 Install
 
 ```bash
 source install.sh
-```
-
-## Sensible macOS defaults
-
-When setting up a new Mac, you may want to set some sensible macOS defaults.
-
-**Note**: Use `Terminal` app to execute the command below:
-
-```bash
-chmod +x .macos
-./.macos
 ```
 
 ## 📚 Resources worth mentioning
