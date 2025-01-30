@@ -22,13 +22,6 @@ brew upgrade
 # Save Homebrew’s installed location.
 BREW_PREFIX=$(brew --prefix)
 
-# Install GNU core utilities (those that come with macOS are outdated).
-# Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
-# install_brew_package coreutils
-if [ ! -f "${BREW_PREFIX}/bin/sha256sum" ]; then
-  ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
-fi
-
 install_brew_package httpie
 install_brew_package jq
 install_brew_package zsh
