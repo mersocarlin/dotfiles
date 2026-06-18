@@ -49,3 +49,179 @@ function compress_video() {
 	ffmpeg -i $1 -vcodec libx264 -crf 28 $2
 	rm $1
 }
+
+##
+# Start a bend dev server that serves from this worktree's local URL.
+# Optionally pass an app sub-path (e.g. `bwt my-app/page`).
+function bwt() {
+  local workspace_name
+  workspace_name=$(basename "$PWD")
+
+  # BEND_WORKTREE tells bend to route requests to this worktree instead of the main checkout
+  bend yarn && BEND_WORKTREE="$workspace_name" bend reactor serve --update --enable-tools --run-tests --ts-watch
+}
+
+##
+# Create a new git worktree from the current branch
+# Sample usage:
+#   - create_worktree
+##
+function create_worktree() {
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  echo "→ Current branch: $current_branch"
+
+  local upstream
+  upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
+  if [[ -n "$upstream" ]]; then
+    echo "→ Pulling latest from $upstream..."
+    if ! git pull; then
+      echo "❌ Pull failed — fix conflicts on '$current_branch' first, then re-run."
+      return 1
+    fi
+  else
+    echo "→ No upstream configured for '$current_branch', skipping pull."
+  fi
+
+  local ADJECTIVES=(shiny swift brave mighty bold fierce epic golden crimson jade blazing frozen electric phantom radiant lunar solar midnight silver neon velvet crystal shadow stormy azure scarlet emerald obsidian cosmic stellar vivid nimble sleek fancy clever daring noble savage serene ancient mystic wild silent gleaming ethereal molten prismatic turbulent spectral frosted gilded hollow sunken blazed wicked cosmic galactic supreme)
+  local NOUNS=(fox hawk crane lynx finch bear wolf heron otter swift mink ibis kite vole wren stoat bison tapir okapi quail hulk thor vision wasp falcon panther widow rocket gamora loki mantis nova storm wolverine colossus gambit rogue bishop nightcrawler havok iceman beast jubilee spiderman ironman deadpool thanos ultron magneto mystique cyclops daredevil punisher quicksilver zordon tommy kimberly billy trini zack jason rocky aisha andros zhane)
+
+  local name
+  while true; do
+    name="${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}-${NOUNS[$RANDOM % ${#NOUNS[@]}]}"
+    if ! git worktree list --porcelain | grep -q "branch refs/heads/$name" && \
+       ! git branch --list "$name" | grep -q .; then
+      break
+    fi
+    echo "→ Name '$name' already in use, trying another..."
+  done
+
+  echo "→ Generated name: $name"
+
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel)
+  local worktree_path="$repo_root/.worktrees/$name"
+
+  echo "→ Creating worktree at $worktree_path..."
+  if ! git worktree add "$worktree_path" -b "$name"; then
+    echo "❌ Failed to create worktree."
+    return 1
+  fi
+
+  echo ""
+  echo "🌿 Worktree ready!"
+  echo ""
+  echo "  Path:   $worktree_path"
+  echo "  Branch: $name"
+  echo "  Base:   $current_branch"
+  echo ""
+  echo "  Once inside Claude or OpenCode, run: /hcarlin-worktree-session"
+  echo ""
+
+  cd "$worktree_path"
+}
+
+##
+# Delete a git worktree and its branch
+# Sample usage:
+#   - delete_worktree <name>          delete a named worktree
+#   - delete_worktree                 from inside a worktree, delete the current one
+##
+function delete_worktree() {
+  local repo_root
+  repo_root=$(git worktree list --porcelain | grep "^worktree" | head -1 | awk '{print $2}')
+  if [[ -z "$repo_root" ]]; then
+    echo "❌ Not inside a git repository." >&2
+    return 1
+  fi
+
+  local name="$1"
+
+  # No name passed: infer it from the current worktree directory
+  if [[ -z "$name" ]]; then
+    local toplevel
+    toplevel=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [[ "$toplevel" == "$repo_root/.worktrees/"* ]]; then
+      name=$(basename "$toplevel")
+      echo "→ Inferred worktree from current directory: $name"
+    else
+      echo "❌ Usage: delete_worktree <name>" >&2
+      echo "   (or run with no arg from inside a worktree to delete the current one)" >&2
+      return 1
+    fi
+  fi
+
+  local worktree_path="$repo_root/.worktrees/$name"
+
+  # If we're inside the worktree being deleted, step back to the main repo first
+  if [[ "$(pwd)" == "$worktree_path"* ]]; then
+    echo "→ Leaving worktree, returning to $repo_root..."
+    cd "$repo_root" || return 1
+  fi
+
+  if [[ ! -d "$worktree_path" ]]; then
+    echo "❌ Worktree not found: $worktree_path" >&2
+    return 1
+  fi
+
+  local branch
+  branch=$(git -C "$repo_root" worktree list --porcelain | awk -v path="$worktree_path" '
+    /^worktree / { current = $2 }
+    /^branch / && current == path { sub("refs/heads/", "", $2); print $2 }
+  ')
+
+  if [[ -z "$branch" ]]; then
+    echo "⚠️  Could not detect branch for worktree '$name' — it may be in a detached HEAD state."
+    echo "   The worktree directory will still be removed, but no branch will be deleted."
+  else
+    echo "→ Detected branch: $branch"
+  fi
+
+  # Kill any bend dev server started with BEND_WORKTREE=$name (it holds files open
+  # in the worktree dir, which otherwise blocks removal). ps xeww shows env vars.
+  local bend_pids
+  bend_pids=$(ps xeww 2>/dev/null | grep -E "BEND_WORKTREE=$name([[:space:]]|$)" | awk '{print $1}')
+  if [[ -n "$bend_pids" ]]; then
+    echo "→ Stopping bend dev server for $name (PIDs: $(echo $bend_pids | tr '\n' ' '))..."
+    echo "$bend_pids" | xargs kill 2>/dev/null
+    sleep 1
+  fi
+
+  echo "→ Removing worktree at $worktree_path..."
+  git -C "$repo_root" worktree remove --force "$worktree_path" 2>/dev/null || true
+  if [[ -d "$worktree_path" ]]; then
+    rm -rf "$worktree_path" 2>/dev/null || true
+  fi
+  git -C "$repo_root" worktree prune
+
+  if [[ -n "$branch" ]]; then
+    if git -C "$repo_root" branch --list "$branch" | grep -q .; then
+      echo "→ Deleting branch $branch..."
+      if ! git -C "$repo_root" branch -D "$branch"; then
+        echo "❌ Failed to delete branch '$branch'." >&2
+        return 1
+      fi
+    else
+      echo "→ Branch $branch already gone, skipping."
+    fi
+  fi
+
+  if [[ -n "$branch" && "$branch" != "$name" ]]; then
+    if git -C "$repo_root" branch --list "$name" | grep -q .; then
+      echo "→ Deleting original worktree branch $name..."
+      git -C "$repo_root" branch -D "$name"
+    fi
+  fi
+
+  echo ""
+  if [[ -d "$worktree_path" ]]; then
+    echo "⚠️  Done, but directory still exists: $worktree_path"
+    echo "   Another process may still have files open there."
+    echo "   Find it with: lsof +D $worktree_path"
+    echo "   Then run: rm -rf $worktree_path"
+  else
+    echo "✅ Done!"
+    echo "  Removed worktree: $worktree_path"
+  fi
+  [[ -n "$branch" ]] && echo "  Deleted branch:   $branch"
+}
