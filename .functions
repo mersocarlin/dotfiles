@@ -62,6 +62,35 @@ function bwt() {
 }
 
 ##
+# Start an nbd dev server. Run from the checkout root or its `nbd` subdir.
+# In a worktree (.worktrees/<name>) it routes via BEND_WORKTREE=<name>;
+# in the main checkout it serves the main checkout with no routing.
+function nwt() {
+  # Resolve the checkout root whether we're at the root or inside the nbd subdir
+  local root
+  if [[ "$(basename "$PWD")" == "nbd" ]]; then
+    root=$(dirname "$PWD")
+  else
+    root="$PWD"
+  fi
+
+  # BEND_WORKTREE tells nbd to route requests to this worktree instead of the main checkout
+  local workspace_name=""
+  if [[ "$(basename "$(dirname "$root")")" == ".worktrees" ]]; then
+    workspace_name=$(basename "$root")
+  fi
+
+  (
+    cd "$root/nbd" || return 1
+    if [[ -n "$workspace_name" ]]; then
+      pnpm install && BEND_WORKTREE="$workspace_name" nbd dev
+    else
+      pnpm install && nbd dev
+    fi
+  )
+}
+
+##
 # Create a new git worktree from the current branch
 # Sample usage:
 #   - create_worktree
