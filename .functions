@@ -52,13 +52,39 @@ function compress_video() {
 
 ##
 # Start a bend dev server that serves from this worktree's local URL.
-# Optionally pass an app sub-path (e.g. `bwt my-app/page`).
+# Works from the checkout root or any subdir (e.g. inside `legacy-packages`):
+# it resolves the checkout root via git. In a worktree (.worktrees/<name>) it
+# routes via BEND_WORKTREE=<name>; in the main checkout it serves with no
+# routing. If a `legacy-packages` subdir exists, bend runs from there.
 function bwt() {
-  local workspace_name
-  workspace_name=$(basename "$PWD")
+  # Resolve the checkout root so location doesn't affect what we derive.
+  local root
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "❌ Not inside a git repository." >&2
+    return 1
+  }
+
+  # BEND_WORKTREE only makes sense in a worktree (.worktrees/<name>). In the
+  # main checkout, leave it unset so bend serves the main checkout directly.
+  local workspace_name=""
+  if [[ "$(basename "$(dirname "$root")")" == ".worktrees" ]]; then
+    workspace_name=$(basename "$root")
+  fi
+
+  local run_dir="$root"
+  if [[ -d "$root/legacy-packages" ]]; then
+    run_dir="$root/legacy-packages"
+  fi
 
   # BEND_WORKTREE tells bend to route requests to this worktree instead of the main checkout
-  bend yarn && BEND_WORKTREE="$workspace_name" bend reactor serve --update --enable-tools --run-tests --ts-watch
+  (
+    cd "$run_dir" || return 1
+    if [[ -n "$workspace_name" ]]; then
+      bend yarn && BEND_WORKTREE="$workspace_name" bend reactor serve --update --enable-tools --run-tests --ts-watch
+    else
+      bend yarn && bend reactor serve --update --enable-tools --run-tests --ts-watch
+    fi
+  )
 }
 
 ##
