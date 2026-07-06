@@ -130,16 +130,47 @@ function create_worktree() {
   upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
   if [[ -n "$upstream" ]]; then
     echo "→ Pulling latest from $upstream..."
-    if ! git pull; then
-      echo "❌ Pull failed — fix conflicts on '$current_branch' first, then re-run."
-      return 1
+
+    # On github.com, SSH can pick the wrong identity with multiple keys/accounts
+    # (personal repo authing as work account -> "Repository not found"). If the
+    # owner matches a `gh` account, pull over HTTPS with its token up front (via
+    # env, so it stays out of `ps`) — deterministic auth, no doomed SSH attempt.
+    local remote_name remote_url owner token
+    remote_name="${upstream%%/*}"
+    remote_url=$(git remote get-url "$remote_name" 2>/dev/null)
+    if [[ "$remote_url" == *github.com[:/]* ]] && command -v gh >/dev/null 2>&1; then
+      owner=$(printf '%s\n' "$remote_url" | sed -E 's#.*github\.com[:/]([^/]+)/.*#\1#')
+      token=$(gh auth token --hostname github.com --user "$owner" 2>/dev/null)
+    fi
+
+    local pull_ok=""
+    if [[ -n "$token" ]]; then
+      echo "→ Authenticating as github.com/$owner via gh token..."
+      GH_TOKEN="$token" git \
+        -c "url.https://github.com/.insteadOf=git@github.com:" \
+        -c "credential.helper=" \
+        -c "credential.helper=!f() { echo username=x-access-token; echo password=\$GH_TOKEN; }; f" \
+        pull && pull_ok="ok"
+    else
+      git pull && pull_ok="ok"
+    fi
+
+    if [[ -z "$pull_ok" ]]; then
+      # A left-behind merge state means real conflicts — those must be resolved
+      # before branching off. Anything else (offline, wrong creds) is not fatal:
+      # we can still create a worktree from the current local branch.
+      if [[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]]; then
+        echo "❌ Pull left conflicts — resolve them on '$current_branch' first, then re-run."
+        return 1
+      fi
+      echo "⚠️  Pull failed (remote unreachable or wrong credentials?) — continuing from local '$current_branch'."
     fi
   else
     echo "→ No upstream configured for '$current_branch', skipping pull."
   fi
 
-  local ADJECTIVES=(shiny swift brave mighty bold fierce epic golden crimson jade blazing frozen electric phantom radiant lunar solar midnight silver neon velvet crystal shadow stormy azure scarlet emerald obsidian cosmic stellar vivid nimble sleek fancy clever daring noble savage serene ancient mystic wild silent gleaming ethereal molten prismatic turbulent spectral frosted gilded hollow sunken blazed wicked cosmic galactic supreme)
-  local NOUNS=(fox hawk crane lynx finch bear wolf heron otter swift mink ibis kite vole wren stoat bison tapir okapi quail hulk thor vision wasp falcon panther widow rocket gamora loki mantis nova storm wolverine colossus gambit rogue bishop nightcrawler havok iceman beast jubilee spiderman ironman deadpool thanos ultron magneto mystique cyclops daredevil punisher quicksilver zordon tommy kimberly billy trini zack jason rocky aisha andros zhane)
+  local ADJECTIVES=(mighty brave bold fierce swift daring valiant savage feral wicked crimson scarlet golden silver jade emerald obsidian crystal blazing frozen electric molten radiant prismatic spectral phantom shadow midnight lunar solar stellar cosmic galactic mystic ancient supreme thunderous)
+  local NOUNS=(hulk thor vision wasp falcon panther widow rocket gamora loki mantis nova storm wolverine colossus gambit rogue bishop nightcrawler havok iceman beast jubilee spiderman ironman deadpool thanos ultron magneto mystique cyclops daredevil punisher quicksilver groot drax nebula blade zordon kimberly trini zack aisha andros zhane batman superman flash aquaman cyborg batgirl joker bane darkseid lantern venom carnage kingpin galactus doom goblin juggernaut apocalypse sabretooth hela sinestro brainiac scarecrow doomsday zod luthor deathstroke)
 
   local name
   while true; do
