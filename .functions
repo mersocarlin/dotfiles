@@ -56,6 +56,11 @@ function compress_video() {
 # it resolves the checkout root via git. In a worktree (.worktrees/<name>) it
 # routes via BEND_WORKTREE=<name>; in the main checkout it serves with no
 # routing. If a `legacy-packages` subdir exists, bend runs from there.
+#
+# `bend serve` was replaced by small commands, so this is setup + dev only.
+# Run the watchers in their own panes when you want them:
+#   bend ts-watch .        # typechecking
+#   bend test . --watch    # tests
 function bwt() {
   # Resolve the checkout root so location doesn't affect what we derive.
   local root
@@ -79,10 +84,13 @@ function bwt() {
   # BEND_WORKTREE tells bend to route requests to this worktree instead of the main checkout
   (
     cd "$run_dir" || return 1
+    # No package args: bend infers them from the cwd, so this works whether
+    # run_dir is a package itself or a container like `legacy-packages`.
+    bend setup --update || return 1
     if [[ -n "$workspace_name" ]]; then
-      bend yarn && BEND_WORKTREE="$workspace_name" bend reactor serve --update --enable-tools --run-tests --ts-watch
+      BEND_WORKTREE="$workspace_name" bend dev --update
     else
-      bend yarn && bend reactor serve --update --enable-tools --run-tests --ts-watch
+      bend dev --update
     fi
   )
 }
@@ -106,12 +114,24 @@ function nwt() {
     workspace_name=$(basename "$root")
   fi
 
+  # Key off the workspace file, not the dir: a stale `nbd` dir outlives flattening
+  local run_dir=""
+  if [[ -f "$root/pnpm-workspace.yaml" ]]; then
+    run_dir="$root"
+  elif [[ -f "$root/nbd/pnpm-workspace.yaml" ]]; then
+    run_dir="$root/nbd"
+  else
+    echo "❌ No pnpm-workspace.yaml in $root or $root/nbd." >&2
+    return 1
+  fi
+
   (
-    cd "$root/nbd" || return 1
+    cd "$run_dir" || return 1
+    NBD_SKIP_PINS=permissive pnpm install && nbd codegen || return 1
     if [[ -n "$workspace_name" ]]; then
-      pnpm install && BEND_WORKTREE="$workspace_name" nbd dev
+      BEND_WORKTREE="$workspace_name" nbd dev
     else
-      pnpm install && nbd dev
+      nbd dev
     fi
   )
 }
