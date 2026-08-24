@@ -137,11 +137,168 @@ function nwt() {
 }
 
 ##
+# Report a pane's foreground state as: <shell_pid> <fg_pgid> <cmdline>
+#
+# A pane is busy when fg_pgid differs from shell_pid: something other than the
+# shell owns the terminal, so typed text would land in that program's stdin
+# instead of at a prompt.
+##
+function _herdr_pane_state() {
+  herdr pane process-info --pane "$1" 2>/dev/null | jq -r '
+    .result.process_info
+    | [ (.shell_pid | tostring),
+        (.foreground_process_group_id | tostring),
+        (.foreground_processes[0].cmdline // "?") ]
+    | @tsv'
+}
+
+##
+# Stop whatever is running in a Herdr pane, escalating until it lets go.
+# Sample usage:
+#   - herdr_stop_pane <pane-id> [label]
+# Returns 0 once the pane is back at a prompt, 1 if it would not stop.
+##
+function herdr_stop_pane() {
+  local pane_id="$1" label="${2:-$1}"
+  local shell_pid fg_pgid cmdline stage i
+
+  IFS=$'\t' read -r shell_pid fg_pgid cmdline < <(_herdr_pane_state "$pane_id")
+  [[ -z "$shell_pid" ]] && return 1
+  [[ "$shell_pid" == "$fg_pgid" ]] && return 0
+
+  # Name what we're killing: a pane-level interrupt is blunt, so leave a trace.
+  echo "→ Stopping in $label: $cmdline"
+
+  # ctrl+c through the terminal first, then signal the foreground process group
+  # directly. Poll instead of sleeping blindly — bwt/nwt run their servers in a
+  # subshell that needs a moment to unwind after the child dies.
+  for stage in int term kill; do
+    case "$stage" in
+      int)  herdr pane send-keys "$pane_id" ctrl+c >/dev/null 2>&1 ;;
+      term) [[ "$fg_pgid" -gt 1 ]] && kill -TERM -"$fg_pgid" 2>/dev/null ;;
+      kill) [[ "$fg_pgid" -gt 1 ]] && kill -KILL -"$fg_pgid" 2>/dev/null ;;
+    esac
+
+    for i in {1..10}; do
+      sleep 0.2
+      IFS=$'\t' read -r shell_pid fg_pgid cmdline < <(_herdr_pane_state "$pane_id")
+      [[ -z "$shell_pid" ]] && return 1
+      [[ "$shell_pid" == "$fg_pgid" ]] && return 0
+    done
+  done
+
+  return 1
+}
+
+##
+# Point the other panes of the current Herdr workspace at a directory.
+# Sample usage:
+#   - herdr_sync_cwd                  send the other panes to $PWD
+#   - herdr_sync_cwd <path>           send the other panes to <path>
+#   - herdr_sync_cwd --stop <path>    stop what's running first, then send them
+#
+# Herdr has no API to change a pane's directory out of band, so this types
+# `cd <path>` at each sibling's prompt. Busy panes are skipped unless --stop
+# is passed: use it only when staying put is the worse outcome, e.g. the
+# directory they're sitting in is about to be deleted.
+##
+function herdr_sync_cwd() {
+  local stop=""
+  if [[ "$1" == "--stop" ]]; then
+    stop="yes"
+    shift
+  fi
+
+  # Herdr exports these into every pane it spawns, so this is also the check
+  # for "am I running under Herdr at all" — outside a pane they're unset.
+  if [[ -z "$HERDR_PANE_ID" || -z "$HERDR_WORKSPACE_ID" ]]; then
+    echo "❌ Not inside a Herdr pane." >&2
+    return 1
+  fi
+
+  # Resolve to an absolute path: the siblings cd from their own cwd, not ours.
+  local target
+  target=$(cd "${1:-$PWD}" 2>/dev/null && pwd) || {
+    echo "❌ Not a directory: ${1:-$PWD}" >&2
+    return 1
+  }
+
+  local panes
+  panes=$(herdr pane list --workspace "$HERDR_WORKSPACE_ID" 2>/dev/null) || {
+    echo "⚠️  Could not reach the Herdr socket API — skipping pane sync." >&2
+    return 1
+  }
+
+  local pane_id label shell_pid fg_pgid cmdline
+  while IFS=$'\t' read -r pane_id label; do
+    # Never send ourselves a cd — we're already there.
+    [[ -z "$pane_id" || "$pane_id" == "$HERDR_PANE_ID" ]] && continue
+
+    IFS=$'\t' read -r shell_pid fg_pgid cmdline < <(_herdr_pane_state "$pane_id")
+    [[ -z "$shell_pid" ]] && continue
+
+    if [[ "$shell_pid" != "$fg_pgid" ]]; then
+      if [[ -z "$stop" ]]; then
+        echo "⏭  Skipped ${label:-$pane_id} — busy."
+        continue
+      fi
+      if ! herdr_stop_pane "$pane_id" "${label:-$pane_id}"; then
+        echo "⚠️  ${label:-$pane_id} would not stop — left in its old directory." >&2
+        continue
+      fi
+    fi
+
+    # Quiet on success — the panes visibly move, so a confirmation line is noise.
+    # Anything that goes wrong still speaks up.
+    if ! herdr pane run "$pane_id" "cd ${(q)target}" >/dev/null 2>&1; then
+      echo "⚠️  Could not update ${label:-$pane_id}." >&2
+    fi
+  done <<< "$(printf '%s' "$panes" | jq -r '.result.panes[] | [.pane_id, (.label // "")] | @tsv')"
+}
+
+##
 # Create a new git worktree from the current branch
 # Sample usage:
-#   - create_worktree
+#   - create_worktree                            generated name, launches Claude
+#   - create_worktree --name my-feature          use this name instead
+#   - create_worktree --agent opencode           launch OpenCode instead
+#   - create_worktree --agent none               don't launch anything
 ##
 function create_worktree() {
+  local custom_name="" agent="claude"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name)
+        if [[ -z "$2" ]]; then
+          echo "❌ --name requires a value." >&2
+          return 1
+        fi
+        custom_name="$2"
+        shift 2
+        ;;
+      --agent)
+        case "$2" in
+          claude|opencode|none) agent="$2"; shift 2 ;;
+          *)
+            echo "❌ --agent must be claude, opencode, or none (got: ${2:-nothing})." >&2
+            return 1
+            ;;
+        esac
+        ;;
+      *)
+        echo "❌ Unknown option: $1" >&2
+        echo "   Usage: create_worktree [--name <name>] [--agent claude|opencode|none]" >&2
+        return 1
+        ;;
+    esac
+  done
+
+  # The name doubles as the branch name, so it must be branch-legal.
+  if [[ -n "$custom_name" ]] && ! git check-ref-format --branch "$custom_name" >/dev/null 2>&1; then
+    echo "❌ '$custom_name' is not a valid branch name." >&2
+    return 1
+  fi
+
   local current_branch
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   echo "→ Current branch: $current_branch"
@@ -193,16 +350,27 @@ function create_worktree() {
   local NOUNS=(hulk thor vision wasp falcon panther widow rocket gamora loki mantis nova storm wolverine colossus gambit rogue bishop nightcrawler havok iceman beast jubilee spiderman ironman deadpool thanos ultron magneto mystique cyclops daredevil punisher quicksilver groot drax nebula blade zordon kimberly trini zack aisha andros zhane batman superman flash aquaman cyborg batgirl joker bane darkseid lantern venom carnage kingpin galactus doom goblin juggernaut apocalypse sabretooth hela sinestro brainiac scarecrow doomsday zod luthor deathstroke)
 
   local name
-  while true; do
-    name="${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}-${NOUNS[$RANDOM % ${#NOUNS[@]}]}"
-    if ! git worktree list --porcelain | grep -q "branch refs/heads/$name" && \
-       ! git branch --list "$name" | grep -q .; then
-      break
+  if [[ -n "$custom_name" ]]; then
+    # A requested name that collides is an error, not a retry — silently
+    # landing on a different name would betray what was asked for.
+    if git worktree list --porcelain | grep -q "branch refs/heads/$custom_name" || \
+       git branch --list "$custom_name" | grep -q .; then
+      echo "❌ Name '$custom_name' is already in use as a worktree or branch." >&2
+      return 1
     fi
-    echo "→ Name '$name' already in use, trying another..."
-  done
-
-  echo "→ Generated name: $name"
+    name="$custom_name"
+    echo "→ Using name: $name"
+  else
+    while true; do
+      name="${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}-${NOUNS[$RANDOM % ${#NOUNS[@]}]}"
+      if ! git worktree list --porcelain | grep -q "branch refs/heads/$name" && \
+         ! git branch --list "$name" | grep -q .; then
+        break
+      fi
+      echo "→ Name '$name' already in use, trying another..."
+    done
+    echo "→ Generated name: $name"
+  fi
 
   local repo_root
   repo_root=$(git rev-parse --show-toplevel)
@@ -221,10 +389,58 @@ function create_worktree() {
   echo "  Branch: $name"
   echo "  Base:   $current_branch"
   echo ""
-  echo "  Once inside Claude or OpenCode, run: /hcarlin-worktree-session"
-  echo ""
-
   cd "$worktree_path"
+
+  # Under Herdr, bring the workspace's other panes along. No-op elsewhere.
+  if [[ -n "$HERDR_PANE_ID" ]]; then
+    herdr_sync_cwd "$worktree_path"
+  fi
+
+  # Everything below hands the pane over to an agent, so it has to come last.
+  [[ "$agent" == "none" ]] && return 0
+
+  if [[ -n "$CLAUDECODE" ]]; then
+    echo "  Already inside Claude — run /hcarlin-worktree-session yourself."
+    echo ""
+    return 0
+  fi
+
+  case "$agent" in
+    claude)
+      # zsh doesn't expand aliases inside functions, so a bare `claude` here
+      # would resolve to the native binary and skip the dvx wrapper that links
+      # managed rules and checks HubSpot auth. Call hsclaude directly.
+      if command -v hsclaude >/dev/null 2>&1; then
+        echo "  Starting Claude with /hcarlin-worktree-session..."
+        echo ""
+        hsclaude /hcarlin-worktree-session
+      elif command -v claude >/dev/null 2>&1; then
+        echo "  Starting Claude with /hcarlin-worktree-session..."
+        echo ""
+        command claude /hcarlin-worktree-session
+      else
+        echo "  Claude not found — run /hcarlin-worktree-session once you're in a session."
+        echo ""
+      fi
+      ;;
+    opencode)
+      # The dvx opencode wrapper takes no prompt args, so the skill can't be
+      # pre-triggered — launch it and leave the reminder on screen. Going
+      # native just for --prompt would skip the wrapper's HubSpot auth.
+      if command -v dvx >/dev/null 2>&1; then
+        echo "  Starting OpenCode — run /hcarlin-worktree-session once inside."
+        echo ""
+        dvx opencode
+      elif command -v opencode >/dev/null 2>&1; then
+        echo "  Starting OpenCode — run /hcarlin-worktree-session once inside."
+        echo ""
+        command opencode
+      else
+        echo "  OpenCode not found — run /hcarlin-worktree-session once you're in a session."
+        echo ""
+      fi
+      ;;
+  esac
 }
 
 ##
@@ -299,6 +515,14 @@ function delete_worktree() {
     rm -rf "$worktree_path" 2>/dev/null || true
   fi
   git -C "$repo_root" worktree prune
+
+  # The panes are stranded in a directory that no longer exists the moment it's
+  # removed, so reclaim them here rather than at the end — a branch deletion
+  # failure below returns early and would leave them behind. --stop because
+  # staying in a deleted directory is worse than losing whatever was running.
+  if [[ -n "$HERDR_PANE_ID" ]]; then
+    herdr_sync_cwd --stop "$repo_root"
+  fi
 
   if [[ -n "$branch" ]]; then
     if git -C "$repo_root" branch --list "$branch" | grep -q .; then
