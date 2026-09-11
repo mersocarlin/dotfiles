@@ -191,14 +191,90 @@ function herdr_stop_pane() {
 }
 
 ##
-# Create a new Herdr workspace pre-split into agent / git / dev panes:
-# agent on top, git and dev side by side below. The workspace opens in the
-# current directory, so it lands wherever you already are.
-# Also bound to prefix+alt+n in ~/.config/herdr/config.toml.
-# Sample usage:
-#   - create_workspace
+# Wait until a Herdr pane's shell is at a prompt, so typed input lands there
+# and not in a half-started shell. Gives up after ~3s.
 ##
-function create_workspace() {
+function _herdr_wait_prompt() {
+  local shell_pid fg_pgid cmdline i
+  for i in {1..15}; do
+    IFS=$'\t' read -r shell_pid fg_pgid cmdline < <(_herdr_pane_state "$1")
+    [[ -n "$shell_pid" && "$shell_pid" == "$fg_pgid" ]] && return 0
+    sleep 0.2
+  done
+  return 1
+}
+
+##
+# Make sure a Herdr workspace has a `diff` tab: one pane, labelled diff,
+# opened at <cwd> and cleared so it starts fresh. Created --no-focus so the
+# caller's pane keeps focus. Does nothing if the tab is already there, so
+# workspaces made before this convention pick it up on their next worktree.
+# Sample usage:
+#   - herdr_ensure_diff_tab <workspace-id> <cwd>
+##
+function herdr_ensure_diff_tab() {
+  local ws_id="$1" cwd="$2"
+  [[ -z "$ws_id" ]] && return 0
+
+  if herdr tab list --workspace "$ws_id" 2>/dev/null \
+      | jq -e '.result.tabs[] | select(.label == "diff")' >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local diff_tab diff_pane
+  diff_tab=$(herdr tab create --workspace "$ws_id" --cwd "$cwd" --label diff --no-focus) || {
+    echo "⚠️  Could not create the diff tab." >&2
+    return 1
+  }
+  diff_pane=$(printf '%s' "$diff_tab" | jq -r '.result.root_pane.pane_id // empty')
+  if [[ -z "$diff_pane" ]]; then
+    echo "⚠️  Could not find the diff tab's pane." >&2
+    return 1
+  fi
+  herdr pane rename "$diff_pane" diff >/dev/null
+  # Typing into a pane whose shell hasn't started yet can be lost, so wait
+  # for the prompt first.
+  if _herdr_wait_prompt "$diff_pane"; then
+    herdr pane run "$diff_pane" "clear" >/dev/null 2>&1
+  fi
+}
+
+##
+# Start `hunk diff --watch` in a workspace's `diff` pane: a live diff of the
+# working tree the pane is sitting in. Quietly does nothing when hunk isn't
+# installed or the workspace has no diff pane; warns if the pane is busy.
+# Sample usage:
+#   - herdr_start_hunk <workspace-id>
+##
+function herdr_start_hunk() {
+  local ws_id="$1"
+  [[ -z "$ws_id" ]] && return 0
+  command -v hunk >/dev/null 2>&1 || return 0
+
+  local diff_pane
+  diff_pane=$(herdr pane list --workspace "$ws_id" 2>/dev/null \
+    | jq -r '.result.panes[] | select(.label == "diff") | .pane_id' | head -1)
+  [[ -z "$diff_pane" ]] && return 0
+
+  if ! _herdr_wait_prompt "$diff_pane"; then
+    echo "⚠️  diff pane is busy — hunk not started." >&2
+    return 1
+  fi
+  herdr pane run "$diff_pane" "hunk diff --watch" >/dev/null 2>&1
+}
+
+##
+# Create a new Herdr workspace with two tabs:
+#   work  — agent on top, git and dev side by side below
+#   diff  — a single pane, left at a clean prompt for diff tooling
+# Every pane opens in the current directory, so it lands wherever you
+# already are, and focus stays on the agent pane in `work`.
+# Also bound to prefix+alt+n in ~/.config/herdr/config.toml — after editing
+# that file run `herdr server reload-config`, the server doesn't re-read it.
+# Sample usage:
+#   - open_workspace
+##
+function open_workspace() {
   if ! command -v herdr >/dev/null 2>&1; then
     echo "❌ herdr not found." >&2
     return 1
@@ -210,6 +286,18 @@ function create_workspace() {
   if [[ -z "$HERDR_PANE_ID" ]]; then
     cwd=$(herdr pane current 2>/dev/null | jq -r '.result.pane.cwd // empty')
     [[ -z "$cwd" ]] && cwd="$HOME"
+  fi
+
+  # Inside a repo, open at the main checkout rather than wherever we happen
+  # to be. A workspace is one per repo, and add_worktree wants to run from
+  # the main checkout — so from a worktree or a subdir this saves the cd.
+  # The first entry of `git worktree list` is always the main checkout.
+  local main_checkout
+  main_checkout=$(git -C "$cwd" worktree list --porcelain 2>/dev/null \
+    | awk 'NR == 1 && /^worktree / { sub(/^worktree /, ""); print }')
+  if [[ -n "$main_checkout" && "$main_checkout" != "$cwd" ]]; then
+    echo "→ Opening at the main checkout: $main_checkout"
+    cwd="$main_checkout"
   fi
 
   local ws root bottom right
@@ -228,6 +316,16 @@ function create_workspace() {
   herdr pane rename "$root" agent >/dev/null
   herdr pane rename "$bottom" git >/dev/null
   herdr pane rename "$right" dev >/dev/null
+
+  # Herdr labels the first tab "1"; it's the one you work in, so say so.
+  local work_tab ws_id
+  work_tab=$(printf '%s' "$ws" | jq -r '.result.tab.tab_id // empty')
+  [[ -n "$work_tab" ]] && herdr tab rename "$work_tab" work >/dev/null
+
+  # Second tab. Failures here are not worth aborting the workspace we
+  # already built — the helper warns and we keep what we have.
+  ws_id=$(printf '%s' "$ws" | jq -r '.result.workspace.workspace_id // empty')
+  herdr_ensure_diff_tab "$ws_id" "$cwd"
 }
 
 ##
@@ -248,18 +346,21 @@ function close_workspace() {
 ##
 # Rename the current Herdr workspace after the repo at <path>. Resolves a
 # worktree path (<repo>/.worktrees/<name>) to the repo's own name, so the
-# label is the repo, never the worktree.
+# label is the repo, never the worktree. An optional tag goes in front so
+# the workspace list shows which agent is driving each repo.
 # Sample usage:
-#   - herdr_label_workspace <path>
+#   - herdr_label_workspace <path>            "sidekick-chat"
+#   - herdr_label_workspace <path> CC         "[CC] sidekick-chat"
 ##
 function herdr_label_workspace() {
   [[ -z "$HERDR_WORKSPACE_ID" ]] && return 0
 
-  local ws_label="$1"
+  local ws_label="$1" tag="$2"
   if [[ "$(basename "$(dirname "$ws_label")")" == ".worktrees" ]]; then
     ws_label=$(dirname "$(dirname "$ws_label")")
   fi
   ws_label=$(basename "$ws_label")
+  [[ -n "$tag" ]] && ws_label="[$tag] $ws_label"
   if ! herdr workspace rename "$HERDR_WORKSPACE_ID" "$ws_label" >/dev/null 2>&1; then
     echo "⚠️  Could not rename the Herdr workspace to '$ws_label'." >&2
   fi
@@ -271,18 +372,28 @@ function herdr_label_workspace() {
 #   - herdr_sync_cwd                  send the other panes to $PWD
 #   - herdr_sync_cwd <path>           send the other panes to <path>
 #   - herdr_sync_cwd --stop <path>    stop what's running first, then send them
+#   - herdr_sync_cwd --clear <path>   clear each pane's screen after the cd
 #
 # Herdr has no API to change a pane's directory out of band, so this types
 # `cd <path>` at each sibling's prompt. Busy panes are skipped unless --stop
 # is passed: use it only when staying put is the worse outcome, e.g. the
-# directory they're sitting in is about to be deleted.
+# directory they're sitting in is about to be deleted. The `diff` pane is
+# the exception: it only ever holds a viewer (hunk), and a diff of the old
+# directory is worthless, so it is always stopped.
 ##
 function herdr_sync_cwd() {
-  local stop=""
-  if [[ "$1" == "--stop" ]]; then
-    stop="yes"
+  local stop="" clear_screen=""
+  while [[ "$1" == --* ]]; do
+    case "$1" in
+      --stop)  stop="yes" ;;
+      --clear) clear_screen="yes" ;;
+      *)
+        echo "❌ Unknown option: $1" >&2
+        return 1
+        ;;
+    esac
     shift
-  fi
+  done
 
   # Herdr exports these into every pane it spawns, so this is also the check
   # for "am I running under Herdr at all" — outside a pane they're unset.
@@ -313,7 +424,7 @@ function herdr_sync_cwd() {
     [[ -z "$shell_pid" ]] && continue
 
     if [[ "$shell_pid" != "$fg_pgid" ]]; then
-      if [[ -z "$stop" ]]; then
+      if [[ -z "$stop" && "$label" != "diff" ]]; then
         echo "⏭  Skipped ${label:-$pane_id} — busy."
         continue
       fi
@@ -325,7 +436,9 @@ function herdr_sync_cwd() {
 
     # Quiet on success — the panes visibly move, so a confirmation line is noise.
     # Anything that goes wrong still speaks up.
-    if ! herdr pane run "$pane_id" "cd ${(q)target}" >/dev/null 2>&1; then
+    local cmd="cd ${(q)target}"
+    [[ -n "$clear_screen" ]] && cmd+=" && clear"
+    if ! herdr pane run "$pane_id" "$cmd" >/dev/null 2>&1; then
       echo "⚠️  Could not update ${label:-$pane_id}." >&2
     fi
   done <<< "$(printf '%s' "$panes" | jq -r '.result.panes[] | [.pane_id, (.label // "")] | @tsv')"
@@ -396,13 +509,13 @@ function git_pull_current() {
 ##
 # Create a new git worktree from the current branch
 # Sample usage:
-#   - create_worktree                            generated name, launches Claude
-#   - create_worktree --name my-feature          use this name instead
-#   - create_worktree --agent opencode           launch OpenCode instead
-#   - create_worktree --agent codex              launch Codex instead
-#   - create_worktree --agent none               don't launch anything
+#   - add_worktree                            generated name, launches Claude
+#   - add_worktree --name my-feature          use this name instead
+#   - add_worktree --agent opencode           launch OpenCode instead
+#   - add_worktree --agent codex              launch Codex instead
+#   - add_worktree --agent none               don't launch anything
 ##
-function create_worktree() {
+function add_worktree() {
   local custom_name="" agent="claude"
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -425,7 +538,7 @@ function create_worktree() {
         ;;
       *)
         echo "❌ Unknown option: $1" >&2
-        echo "   Usage: create_worktree [--name <name>] [--agent claude|opencode|codex|none]" >&2
+        echo "   Usage: add_worktree [--name <name>] [--agent claude|opencode|codex|none]" >&2
         return 1
         ;;
     esac
@@ -501,10 +614,22 @@ function create_worktree() {
   cd "$worktree_path"
 
   # Under Herdr, bring the workspace's other panes along and label the
-  # workspace after the repo. No-op elsewhere.
+  # workspace "[<agent>] <repo>" so the workspace list shows who is driving
+  # what. --agent none gets the bare repo name. No-op elsewhere.
   if [[ -n "$HERDR_PANE_ID" ]]; then
-    herdr_sync_cwd "$worktree_path"
-    herdr_label_workspace "$repo_root"
+    local agent_tag=""
+    case "$agent" in
+      claude)   agent_tag="CC" ;;
+      opencode) agent_tag="OC" ;;
+      codex)    agent_tag="CX" ;;
+    esac
+    # The diff tab is created first so the sync below moves it too. If hunk
+    # is still open there from another worktree the sync stops it, then a
+    # fresh one starts on this worktree.
+    herdr_ensure_diff_tab "$HERDR_WORKSPACE_ID" "$worktree_path"
+    herdr_sync_cwd --clear "$worktree_path"
+    herdr_start_hunk "$HERDR_WORKSPACE_ID"
+    herdr_label_workspace "$repo_root" "$agent_tag"
   fi
 
   # Everything below hands the pane over to an agent, so it has to come last.
@@ -535,17 +660,19 @@ function create_worktree() {
       fi
       ;;
     opencode)
-      # The dvx wrapper forwards unknown args to opencode, so --auto (skip
-      # permission prompts) goes through. The skill still isn't pre-triggered
-      # here — leave the reminder on screen.
+      # OpenCode has no slash-command argument like Claude's, so the skill is
+      # triggered through --prompt instead. The dvx wrapper forwards unknown
+      # args to opencode, so both --prompt and --auto (skip permission
+      # prompts) go through.
+      local opencode_prompt="Invoke the hcarlin-worktree-session skill now and wait for my instructions"
       if _is_hs_machine && command -v dvx >/dev/null 2>&1; then
-        echo "  Starting OpenCode — run /hcarlin-worktree-session once inside."
+        echo "  Starting OpenCode with /hcarlin-worktree-session..."
         echo ""
-        dvx opencode --auto
+        dvx opencode --prompt "$opencode_prompt" --auto
       elif command -v opencode >/dev/null 2>&1; then
-        echo "  Starting OpenCode — run /hcarlin-worktree-session once inside."
+        echo "  Starting OpenCode with /hcarlin-worktree-session..."
         echo ""
-        command opencode --auto
+        command opencode --prompt "$opencode_prompt" --auto
       else
         echo "  OpenCode not found — run /hcarlin-worktree-session once you're in a session."
         echo ""
@@ -569,10 +696,10 @@ function create_worktree() {
 ##
 # Delete a git worktree and its branch
 # Sample usage:
-#   - delete_worktree <name>          delete a named worktree
-#   - delete_worktree                 from inside a worktree, delete the current one
+#   - remove_worktree <name>          delete a named worktree
+#   - remove_worktree                 from inside a worktree, delete the current one
 ##
-function delete_worktree() {
+function remove_worktree() {
   local repo_root
   repo_root=$(git worktree list --porcelain | grep "^worktree" | head -1 | awk '{print $2}')
   if [[ -z "$repo_root" ]]; then
@@ -590,7 +717,7 @@ function delete_worktree() {
       name=$(basename "$toplevel")
       echo "→ Inferred worktree from current directory: $name"
     else
-      echo "❌ Usage: delete_worktree <name>" >&2
+      echo "❌ Usage: remove_worktree <name>" >&2
       echo "   (or run with no arg from inside a worktree to delete the current one)" >&2
       return 1
     fi
@@ -642,11 +769,14 @@ function delete_worktree() {
   # The panes are stranded in a directory that no longer exists the moment it's
   # removed, so reclaim them here rather than at the end — a branch deletion
   # failure below returns early and would leave them behind. --stop because
-  # staying in a deleted directory is worse than losing whatever was running.
-  # The rename drops any session suffix added by hand, e.g.
-  # "sidekick-chat (login)" back to "sidekick-chat".
+  # staying in a deleted directory is worse than losing whatever was running
+  # — a dev server in `dev`, hunk in `diff` — and --clear so every pane,
+  # `diff` included, comes back as a clean prompt at the repo root.
+  # The rename resets the label to the bare repo name: the agent tag from
+  # add_worktree goes, and so does any suffix added by hand, e.g.
+  # "[CC] sidekick-chat (login)" back to "sidekick-chat".
   if [[ -n "$HERDR_PANE_ID" ]]; then
-    herdr_sync_cwd --stop "$repo_root"
+    herdr_sync_cwd --stop --clear "$repo_root"
     herdr_label_workspace "$repo_root"
   fi
 
