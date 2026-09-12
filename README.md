@@ -19,12 +19,8 @@ Example:
 
 ```bash
 # Git credentials
-GIT_AUTHOR_NAME="Your name here"
-GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
-git config --global user.name "$GIT_AUTHOR_NAME"
-GIT_AUTHOR_EMAIL="Your email here"
-GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
-git config --global user.email "$GIT_AUTHOR_EMAIL"
+git config --global user.name "Your Name"
+git config --global user.email "YOUR_GITHUB_ID+YOUR_USERNAME@users.noreply.github.com"
 ```
 
 ## 🚀 Install
