@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
-# .ssh 
+# .ssh
 export SSH_PATH="$HOME/.ssh"
 
 # Preferred terminal editor.
@@ -16,6 +16,14 @@ path=(
   "$HOME/.hunk/bin"
   $path
 )
+
+# macOS-only: Homebrew is not on the default PATH on Apple Silicon.
+if [[ "$OSTYPE" == darwin* ]] && ! command -v brew >/dev/null 2>&1; then
+  for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [[ -x "$brew_bin" ]] && eval "$("$brew_bin" shellenv)" && break
+  done
+  unset brew_bin
+fi
 
 # macOS-only: use GNU Coreutils if Homebrew and coreutils are installed.
 if [[ "$OSTYPE" == darwin* ]] && command -v brew >/dev/null 2>&1; then

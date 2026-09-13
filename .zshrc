@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -11,7 +11,7 @@ plugins=(
   zsh-syntax-highlighting
 )
 
-source $ZSH/oh-my-zsh.sh
+[ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
 for file in $HOME/.{exports,aliases,functions,extras}; do
   [ -r "$file" ] && [ -f "$file" ] && source "$file";

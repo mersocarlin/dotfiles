@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Navigation
 alias ..="cd .."
@@ -14,9 +14,6 @@ alias la="ls -lah"
 # List only directories
 alias lsd="ls -lh | grep '^d'"
 
-# IP addresses
-alias localip="ipconfig getifaddr en0"
-
 # Recursively delete `.DS_Store` files
 alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
 
@@ -24,7 +21,6 @@ alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
 for method in GET get POST post PUT put DELETE delete; do
   alias "${method}"="http '${method}'"
 done
-
 
 # Reload the shell
 alias reload="exec zsh"
@@ -54,5 +50,10 @@ alias openextras="$EDITOR $HOME/.extras"
 alias openfunctions="$EDITOR $HOME/.functions"
 alias openzshrc="$EDITOR $HOME/.zshrc"
 
-### Sufix aliases
-alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}=code
+### Suffix aliases
+# Typing a filename at the prompt opens it in VS Code, or $EDITOR when `code` is missing.
+if command -v code >/dev/null 2>&1; then
+  alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}=code
+else
+  alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}="${EDITOR:-nano}"
+fi
