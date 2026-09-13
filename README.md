@@ -1,12 +1,13 @@
 # dotfiles
 
+Shell setup for macOS and Linux (Debian/Ubuntu, Fedora, Arch).
+
 ## 🔧 Configuration Files
 
 - `.aliases` - all aliases
 - `.exports` - all environment variables
 - `.extras` - custom settings you don’t want to commit (_optional_)
-- `.functions` - bash functions, called by aliases
-- `.macos` - macos defaults
+- `.functions` - zsh functions, called by aliases
 - `.zshrc` - zsh config
 
 ### 🎛️ Custom settings
@@ -26,8 +27,18 @@ git config --global user.email "YOUR_GITHUB_ID+YOUR_USERNAME@users.noreply.githu
 ## 🚀 Install
 
 ```bash
-source install.sh
+./install.sh
 ```
+
+This runs three scripts in order. Each one can also be run on its own:
+
+- `packages.sh` - installs httpie, jq, zsh and ffmpeg. Uses Homebrew on macOS (installing it first if needed) and apt, dnf or pacman on Linux.
+- `apps.sh` - installs oh-my-zsh with the zsh-autosuggestions and zsh-syntax-highlighting plugins, and makes zsh the default shell.
+- `postinstall.sh` - symlinks the dotfiles into `$HOME`. Any existing file is moved to `~/.dotfiles-backup/<timestamp>/` first.
+
+## 📖 Docs
+
+- [Persistent SSH agent with Herdr](docs/references/ssh-agent-herdr.md)
 
 ## 📚 Resources worth mentioning
 

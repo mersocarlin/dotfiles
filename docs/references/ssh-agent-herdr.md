@@ -6,7 +6,7 @@ This setup lets you type your SSH key passphrase only once per reboot, even acro
 
 - A long‑lived `ssh-agent` is started inside a Herdr session.
 - Its environment is saved to `~/.ssh-agent-herdr-env`.
-- `~/.zshrc` automatically sources this file if it exists, so every new shell uses the same agent.
+- The `.zshrc` in this repo sources that file when it exists, so every new shell uses the same agent. Nothing to add by hand.
 - Your private key is loaded into the agent once with `ssh-add`; after that, no further passphrase prompts appear unless the agent stops (e.g. reboot).
 
 ## Initial setup (run once)
@@ -22,16 +22,7 @@ ssh-agent -s > ~/.ssh-agent-herdr-env
 # Replace with your actual key path if different
 ssh-add ~/.ssh/id_ed25519  # or ~/.ssh/id_rsa, etc.
 
-# 3. Configure zsh to reuse this agent
-cat >> ~/.zshrc << 'EOF'
-
-# Use persistent SSH agent from Herdr session if available
-if [ -f "$HOME/.ssh-agent-herdr-env" ]; then
-  . "$HOME/.ssh-agent-herdr-env" >/dev/null 2>&1
-fi
-EOF
-
-# 4. Reload zsh
+# 3. Reload zsh so it picks up the agent
 exec zsh
 ```
 
