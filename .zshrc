@@ -1,31 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
-ZSH_THEME="avit"
+export ZSH="$HOME/.oh-my-zsh"
+
+ZSH_THEME="bira"
 
 plugins=(
   docker
   git
   zsh-autosuggestions
-  zsh-nvm
   zsh-syntax-highlighting
 )
+
+[ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
 for file in $HOME/.{exports,aliases,functions,extras}; do
   [ -r "$file" ] && [ -f "$file" ] && source "$file";
 done;
 unset file;
 
-source $ZSH/oh-my-zsh.sh
 
-# Enforce node stable version on startup
-nvm use stable
-
-# Load zsh shell integration
-SHELL_INTEGRATION=${HOME}/.iterm2_shell_integration.zsh
-if test -f "$SHELL_INTEGRATION"; then
-  source $SHELL_INTEGRATION
+# Use persistent SSH agent from Herdr sessions if available
+if [ -f "$HOME/.ssh-agent-herdr-env" ]; then
+  . "$HOME/.ssh-agent-herdr-env" >/dev/null 2>&1
 fi
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

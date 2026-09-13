@@ -1,15 +1,27 @@
 #!/bin/bash
 
-# Remove existing symlinks/dotfiles from $HOME
-for file in $HOME/.{zshrc,exports,aliases,functions,extras}; do
-	[ -r "$file" ] && [ -f "$file" ] && rm $file;
-done;
-unset file;
+# Symlinks the dotfiles into $HOME, backing up anything already there.
 
-# Symlink dotfiles
-DOTFILES_DIR=$(pwd)
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
-for file in $DOTFILES_DIR/.{zshrc,exports,aliases,functions,extras}; do
-	[ -r "$file" ] && [ -f "$file" ] && ln -s $file $HOME;
-done;
-unset file;
+for name in zshrc exports aliases functions gitconfig extras; do
+  src="$DOTFILES_DIR/.$name"
+  dest="$HOME/.$name"
+
+  [ -f "$src" ] || continue
+
+  if [ -L "$dest" ]; then
+    rm "$dest"
+  elif [ -f "$dest" ]; then
+    mkdir -p "$BACKUP_DIR"
+    mv "$dest" "$BACKUP_DIR/.$name"
+    echo "Backed up $dest to $BACKUP_DIR/.$name"
+  fi
+
+  ln -s "$src" "$dest"
+done
+
+if [ -f "$BACKUP_DIR/.gitconfig" ] && [ ! -f "$HOME/.gitconfig.local" ]; then
+  echo "Your old .gitconfig was backed up. Put its [user] section in ~/.gitconfig.local."
+fi

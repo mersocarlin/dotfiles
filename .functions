@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Create a new directory and enter it
 function mkd() {
@@ -37,7 +37,45 @@ function wipe_docker() {
 # 	- from_today 7y (7 years from now)
 ##
 function from_today() {
-	date -j -v+$1 +%Y-%m-%d
+	if date -v+0d >/dev/null 2>&1; then
+		date -j -v+$1 +%Y-%m-%d
+		return
+	fi
+
+	local amount="${1%[dwmy]}" unit
+	case "${1##*[0-9]}" in
+		d) unit=days ;;
+		w) unit=weeks ;;
+		m) unit=months ;;
+		y) unit=years ;;
+		*) echo "Usage: from_today <n>[d|w|m|y]" >&2; return 1 ;;
+	esac
+	date -d "+$amount $unit" +%Y-%m-%d
+}
+
+##
+# Open a file in VS Code, or in $EDITOR when the code CLI is missing.
+# Used by the suffix aliases in .aliases.
+##
+function open_file() {
+	if command -v code >/dev/null 2>&1; then
+		code "$@"
+	else
+		${=EDITOR:-nano} "$@"
+	fi
+}
+
+##
+# Print the LAN IP address of this machine
+##
+function localip() {
+	if [[ "$OSTYPE" == darwin* ]]; then
+		ipconfig getifaddr en0 || ipconfig getifaddr en1
+	elif command -v ip >/dev/null 2>&1; then
+		ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}'
+	else
+		hostname -I 2>/dev/null | awk '{print $1}'
+	fi
 }
 
 ##

@@ -1,0 +1,21 @@
+name: Install
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: ./install.sh
+      - name: Test
+        run: ./test.sh

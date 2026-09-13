@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+
+# Copy this file to ~/.extras. It is sourced last, so anything here
+# overrides .exports, .aliases and .functions. It is gitignored.
+
+# export EDITOR="vim"
+# export VISUAL="vim"
+
+# alias work="cd ~/Development/work"
+
+# function greet() {
+#   echo "hello from $(hostname)"
+# }

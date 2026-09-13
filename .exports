@@ -1,15 +1,38 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/local/sbin:$(brew --prefix coreutils)/libexec/gnubin:$PATH"
-
-export EDITOR="vim"
-
+# .ssh
 export SSH_PATH="$HOME/.ssh"
 
-# nvm configuration
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# Preferred terminal editor.
+export EDITOR="nano"
+export VISUAL="nano"
 
-# Path to oh-my-zsh directory
-export ZSH="$HOME/.oh-my-zsh"
+# Keep PATH entries unique.
+typeset -U PATH path
+
+# Shared user-installed tools.
+path=(
+  "$HOME/.local/bin"
+  "$HOME/.hunk/bin"
+  $path
+)
+
+# macOS-only: Homebrew is not on the default PATH on Apple Silicon.
+if [[ "$OSTYPE" == darwin* ]] && ! command -v brew >/dev/null 2>&1; then
+  for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [[ -x "$brew_bin" ]] && eval "$("$brew_bin" shellenv)" && break
+  done
+  unset brew_bin
+fi
+
+# macOS-only: use GNU Coreutils if Homebrew and coreutils are installed.
+if [[ "$OSTYPE" == darwin* ]] && command -v brew >/dev/null 2>&1; then
+  coreutils_prefix="$(brew --prefix coreutils 2>/dev/null)"
+  [[ -d "$coreutils_prefix/libexec/gnubin" ]] && path=(
+    "$coreutils_prefix/libexec/gnubin"
+    $path
+  )
+  unset coreutils_prefix
+fi
+
+export PATH
