@@ -51,9 +51,5 @@ alias openfunctions="$EDITOR $HOME/.functions"
 alias openzshrc="$EDITOR $HOME/.zshrc"
 
 ### Suffix aliases
-# Typing a filename at the prompt opens it in VS Code, or $EDITOR when `code` is missing.
-if command -v code >/dev/null 2>&1; then
-  alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}=code
-else
-  alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}="${EDITOR:-nano}"
-fi
+# Typing a filename at the prompt opens it with open_file (see .functions).
+alias -s {cs,csv,html,json,md,ts,txt,yml,yaml}=open_file

@@ -54,6 +54,18 @@ function from_today() {
 }
 
 ##
+# Open a file in VS Code, or in $EDITOR when the code CLI is missing.
+# Used by the suffix aliases in .aliases.
+##
+function open_file() {
+	if command -v code >/dev/null 2>&1; then
+		code "$@"
+	else
+		${=EDITOR:-nano} "$@"
+	fi
+}
+
+##
 # Print the LAN IP address of this machine
 ##
 function localip() {
