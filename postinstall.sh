@@ -5,7 +5,7 @@
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
-for name in zshrc exports aliases functions extras; do
+for name in zshrc exports aliases functions gitconfig extras; do
   src="$DOTFILES_DIR/.$name"
   dest="$HOME/.$name"
 
@@ -21,3 +21,7 @@ for name in zshrc exports aliases functions extras; do
 
   ln -s "$src" "$dest"
 done
+
+if [ -f "$BACKUP_DIR/.gitconfig" ] && [ ! -f "$HOME/.gitconfig.local" ]; then
+  echo "Your old .gitconfig was backed up. Put its [user] section in ~/.gitconfig.local."
+fi
