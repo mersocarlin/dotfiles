@@ -36,9 +36,12 @@ install_zsh_plugin zsh-syntax-highlighting https://github.com/zsh-users/zsh-synt
 
 # Set zsh as default shell
 zsh_path="$(command -v zsh)"
-if [ "$SHELL" != "$zsh_path" ]; then
+if [ "$(basename "${SHELL:-}")" != "zsh" ]; then
   if ! grep -qx "$zsh_path" /etc/shells 2>/dev/null; then
     echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
   fi
-  chsh -s "$zsh_path"
+  # chsh asks for a password when there is a tty; without one, fall back to sudo.
+  chsh -s "$zsh_path" || sudo chsh -s "$zsh_path" "$USER"
+else
+  echo "zsh is the login shell"
 fi

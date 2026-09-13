@@ -32,7 +32,8 @@ install_macos_packages() {
   install_brew
 
   brew update
-  brew upgrade
+  # Upgrading touches every formula on the machine, so only do it when asked.
+  [ "${BREW_UPGRADE:-0}" = 1 ] && brew upgrade
 
   for pkg in "${PACKAGES[@]}"; do
     install_brew_package "$pkg"

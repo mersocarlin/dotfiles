@@ -2,7 +2,7 @@
 
 set -e
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 bash ./packages.sh
 bash ./apps.sh
