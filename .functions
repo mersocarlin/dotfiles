@@ -89,10 +89,33 @@ function compress_video() {
 }
 
 ##
+# Workspace name for BEND_WORKTREE routing, or nothing in the main checkout.
+# The name is only a label bender-proxy matches on (hs-platform-tools
+# getLocalWorkspace), never a path, so any worktree can have one.
+#   <repo>/.worktrees/<name>          -> <name>        (add_worktree)
+#   ~/.codex/worktrees/<id>/<repo>    -> <id>-<repo>   (any other tool)
+##
+function _worktree_name() {
+  local root="$1" git_dir common_dir
+  git_dir=$(git -C "$root" rev-parse --path-format=absolute --git-dir 2>/dev/null) || return 1
+  common_dir=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  [[ "$git_dir" == "$common_dir" ]] && return 0
+
+  local parent
+  parent=$(basename "$(dirname "$root")")
+  if [[ "$parent" == ".worktrees" ]]; then
+    basename "$root"
+    return 0
+  fi
+  # Workspace names must be lowercase alphanumerics and hyphens.
+  printf '%s-%s\n' "$parent" "$(basename "$root")" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-'
+}
+
+##
 # Start a bend dev server that serves from this worktree's local URL.
 # Works from the checkout root or any subdir (e.g. inside `legacy-packages`):
-# it resolves the checkout root via git. In a worktree (.worktrees/<name>) it
-# routes via BEND_WORKTREE=<name>; in the main checkout it serves with no
+# it resolves the checkout root via git. In a worktree it routes via
+# BEND_WORKTREE (see _worktree_name); in the main checkout it serves with no
 # routing. If a `legacy-packages` subdir exists, bend runs from there.
 #
 # `bend serve` was replaced by small commands, so this is setup + dev only.
@@ -107,12 +130,9 @@ function bwt() {
     return 1
   }
 
-  # BEND_WORKTREE only makes sense in a worktree (.worktrees/<name>). In the
-  # main checkout, leave it unset so bend serves the main checkout directly.
-  local workspace_name=""
-  if [[ "$(basename "$(dirname "$root")")" == ".worktrees" ]]; then
-    workspace_name=$(basename "$root")
-  fi
+  local workspace_name
+  workspace_name=$(_worktree_name "$root")
+  [[ -n "$workspace_name" ]] && echo "→ Routing as BEND_WORKTREE=$workspace_name"
 
   local run_dir="$root"
   if [[ -d "$root/legacy-packages" ]]; then
@@ -134,23 +154,20 @@ function bwt() {
 }
 
 ##
-# Start an nbd dev server. Run from the checkout root or its `nbd` subdir.
-# In a worktree (.worktrees/<name>) it routes via BEND_WORKTREE=<name>;
-# in the main checkout it serves the main checkout with no routing.
+# Start an nbd dev server. Works from the checkout root or any subdir: it
+# resolves the checkout root via git. In a worktree it routes via
+# BEND_WORKTREE (see _worktree_name); in the main checkout it serves the main
+# checkout with no routing.
 function nwt() {
-  # Resolve the checkout root whether we're at the root or inside the nbd subdir
   local root
-  if [[ "$(basename "$PWD")" == "nbd" ]]; then
-    root=$(dirname "$PWD")
-  else
-    root="$PWD"
-  fi
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "❌ Not inside a git repository." >&2
+    return 1
+  }
 
-  # BEND_WORKTREE tells nbd to route requests to this worktree instead of the main checkout
-  local workspace_name=""
-  if [[ "$(basename "$(dirname "$root")")" == ".worktrees" ]]; then
-    workspace_name=$(basename "$root")
-  fi
+  local workspace_name
+  workspace_name=$(_worktree_name "$root")
+  [[ -n "$workspace_name" ]] && echo "→ Routing as BEND_WORKTREE=$workspace_name"
 
   # Key off the workspace file, not the dir: a stale `nbd` dir outlives flattening
   local run_dir=""
